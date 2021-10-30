@@ -1,0 +1,31 @@
+name: env_cdec_maps
+
+channels:
+  - defaults
+  - conda-forge
+ 
+dependencies:
+  #basics
+  - python
+  - pip
+  - ipykernel
+  - autopep8
+  #for tests
+  - pytest
+  #data
+  - pandas
+  # support for html parsing
+  - lxml
+  - html5lib
+  - bs4
+  #visualization
+  - geopandas
+  - holoviews 
+  - hvplot
+  - matplotlib
+  - bokeh
+  - geoviews
+  - spatialpandas
+
+# pip install cdec-maps here 
+# pip install -e . --no-deps

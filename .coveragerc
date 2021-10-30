@@ -1,0 +1,7 @@
+[report]
+omit =
+    setup.py
+    cdec_maps/__main__.py
+    cdec_maps/_version.py
+    versioneer.py
+    tests/*
