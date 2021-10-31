@@ -49,30 +49,40 @@ class Reader(param.Parameterized):
 
     def _read_station_data(self, station_id, sensor_number, duration_code, start, end):
         data_url = f'{self.cdec_base_url}/dynamicapp/req/CSVDataServletPST?Stations={station_id}&SensorNums={sensor_number}&dur_code={duration_code}&Start={start}&End={end}'
-        #print(data_url)
         type_map = {'STATION_ID': 'category', 'DURATION': 'category', 'SENSOR_NUMBER': 'category', 'SENSOR_TYPE': 'category',
                'VALUE': 'float', 'DATA_FLAG': 'category', 'UNITS': 'category'}
-        df = pd.read_csv(data_url, dtype=type_map, na_values=['---', 'ART', 'BRT'], parse_dates=True, index_col='DATE TIME')
+        df = pd.read_csv(data_url, dtype=type_map, na_values=[
+                         '---', 'ART', 'BRT'], parse_dates=True, index_col='DATE TIME')
         df['OBS DATE'] = pd.to_datetime(df['OBS DATE'])
         return df
-#
+
+    def _to_datetime(self, dstr):
+        if dstr == '':
+            return pd.Timestamp.now()
+        else:
+            return pd.to_datetime(dstr)
 
     def to_year(self, dstr):
-        if dstr == '':
-            return pd.Timestamp.now().year
+        return self._to_datetime(dstr).year
+
+    def _sort_times(self, start, end):
+        if self._to_datetime(start) < self._to_datetime(end):
+            return start, end
         else:
-            return pd.to_datetime(dstr).year
+            return end, start
 
     def read_station_data(self, station_id, sensor_number, duration_code, start, end):
         '''
         Using dask read CDEC via multiple threads which is quite fast and scales as much as CDEC services will allow
         '''
+        # make sure start and end are in the right order, start < order
+        start, end = self._sort_times(start, end)  
         start_year = self.to_year(start)
-        end_year = self.to_year(end)+1
-        url = self.cdec_base_url+'/dynamicapp/req/CSVDataServletPST?Stations={station_id}&SensorNums={sensor_number}&dur_code={duration_code}&Start=01-01-{start}&End=12-31-{end}+23:59'
+        end_year = self.to_year(end) + 1
+        url = self.cdec_base_url + \
+            '/dynamicapp/req/CSVDataServletPST?Stations={station_id}&SensorNums={sensor_number}&dur_code={duration_code}&Start=01-01-{start}&End=12-31-{end}+23:59'
         list_urls = [url.format(station_id=station_id, sensor_number=sensor_number, duration_code=duration_code,
                                 start=syear, end=syear) for syear in range(start_year, end_year)]
-        #print(list_urls)
         dtype_map = {'STATION_ID': 'category', 'DURATION': 'category', 'SENSOR_NUMBER': 'category', 'SENSOR_TYPE': 'category',
                 'VALUE': 'float', 'DATA_FLAG': 'category', 'UNITS': 'category'}
         ddf = dd.read_csv(list_urls, blocksize=None, dtype=dtype_map,
@@ -83,6 +93,4 @@ class Reader(param.Parameterized):
         df.index = pd.to_datetime(df['DATE TIME'])
         df['OBS DATE'] = pd.to_datetime(df['OBS DATE'])
         df = df.drop(columns=['DATE TIME'])
-        first_idx = df['VALUE'].first_valid_index()
-        last_idx = df['VALUE'].last_valid_index()
-        return df.loc[first_idx:last_idx]
+        return df.loc[pd.to_datetime(start):pd.to_datetime(end)]
