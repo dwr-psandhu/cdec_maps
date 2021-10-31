@@ -2,8 +2,9 @@
 from cdec_maps import cdec
 
 def test_read_all():
-    c=cdec.CDEC()
+    c=cdec.Reader()
     df = c.read_daily_stations()
+
     assert not df.empty
     assert len(df) > 10
 
@@ -31,6 +32,12 @@ def test_read_all():
     assert not df.empty
     assert len(df) > 10
 
+def test_lis(): # test for stations with 4 tables in station meta info, including a datum table
+    c=cdec.Reader()
+    dflist = c.read_station_meta_info('LIS')
+    assert len(dflist) == 4
 
-
-
+def test_mck(): # test for MCK failed as no comments table but has a datum table
+    c = cdec.Reader()
+    dflist = c.read_station_meta_info('MCK')
+    assert len(dflist) == 4

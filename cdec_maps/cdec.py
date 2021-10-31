@@ -3,7 +3,7 @@ import pandas as pd
 from dask import dataframe as dd
 
 
-class CDEC(param.Parameterized):
+class Reader(param.Parameterized):
     cdec_base_url = param.String(default="http://cdec.water.ca.gov",
                                  allow_None=False, regex='http://.*')
 
@@ -26,15 +26,25 @@ class CDEC(param.Parameterized):
     def read_station_meta_info(self, station_id):
         tables = pd.read_html(self.cdec_base_url + '/dynamicapp/staMeta?station_id=%s' % station_id)
         # table[0] should be station meta info
+
         def _pair_table_columns(df, column_index):
             return df.iloc[:, column_index].set_index(column_index[1]).set_axis(['Value'], axis=1)
         tables[0] = pd.concat([_pair_table_columns(tables[0], [0, 1]),
                               _pair_table_columns(tables[0], [2, 3])])
+        if 'Zero Datum' in tables[1].columns:  # For now remove
+            datum_table = tables.pop(1)
+        else:
+            datum_table = pd.DataFrame(
+                [], ['Zero Datum', 'Adj To NGVD', 'Peak of Record', 'Monitor Stage', 'Flood Stage', 'Guidance Plots'])
         # table[1] should be station sensor info
         tables[1] = tables[1].set_axis(
             ['Sensor Description', 'Sensor Number', 'Duration', 'Plot', 'Data Collection', 'Data Available'], axis=1)
         # table[2] should be station comments
-        tables[2] = tables[2].set_axis(['Date', 'Comment'], axis=1)
+        if len(tables) > 2:
+            tables[2] = tables[2].set_axis(['Date', 'Comment'], axis=1)
+        else:
+            tables.append(pd.DataFrame([], columns=['Date', 'Comment']))
+        tables.append(datum_table)
         return tables
 
     def read_station_data(self, station_id, sensor_number, duration_code, start, end):
