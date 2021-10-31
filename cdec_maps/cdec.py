@@ -47,9 +47,42 @@ class Reader(param.Parameterized):
         tables.append(datum_table)
         return tables
 
-    def read_station_data(self, station_id, sensor_number, duration_code, start, end):
+    def _read_station_data(self, station_id, sensor_number, duration_code, start, end):
         data_url = f'{self.cdec_base_url}/dynamicapp/req/CSVDataServletPST?Stations={station_id}&SensorNums={sensor_number}&dur_code={duration_code}&Start={start}&End={end}'
+        #print(data_url)
         type_map = {'STATION_ID': 'category', 'DURATION': 'category', 'SENSOR_NUMBER': 'category', 'SENSOR_TYPE': 'category',
                'VALUE': 'float', 'DATA_FLAG': 'category', 'UNITS': 'category'}
-        return pd.read_csv(data_url, dtype=type_map, na_values=['---', 'ART', 'BRT'], parse_dates=True, index_col='DATE TIME')
+        df = pd.read_csv(data_url, dtype=type_map, na_values=['---', 'ART', 'BRT'], parse_dates=True, index_col='DATE TIME')
+        df['OBS DATE'] = pd.to_datetime(df['OBS DATE'])
+        return df
 #
+
+    def to_year(self, dstr):
+        if dstr == '':
+            return pd.Timestamp.now().year
+        else:
+            return pd.to_datetime(dstr).year
+
+    def read_station_data(self, station_id, sensor_number, duration_code, start, end):
+        '''
+        Using dask read CDEC via multiple threads which is quite fast and scales as much as CDEC services will allow
+        '''
+        start_year = self.to_year(start)
+        end_year = self.to_year(end)+1
+        url = self.cdec_base_url+'/dynamicapp/req/CSVDataServletPST?Stations={station_id}&SensorNums={sensor_number}&dur_code={duration_code}&Start=01-01-{start}&End=12-31-{end}+23:59'
+        list_urls = [url.format(station_id=station_id, sensor_number=sensor_number, duration_code=duration_code,
+                                start=syear, end=syear) for syear in range(start_year, end_year)]
+        #print(list_urls)
+        dtype_map = {'STATION_ID': 'category', 'DURATION': 'category', 'SENSOR_NUMBER': 'category', 'SENSOR_TYPE': 'category',
+                'VALUE': 'float', 'DATA_FLAG': 'category', 'UNITS': 'category'}
+        ddf = dd.read_csv(list_urls, blocksize=None, dtype=dtype_map,
+                            na_values={'VALUE': ['---', 'ART', 'BRT']})
+        # parse_dates=['DATE TIME','OBS DATE'] # doesn't work so will have to read in as strings and convert later
+        # dd.visualize(): shows parallel tasks which are executed below
+        df = ddf.compute()
+        df.index = pd.to_datetime(df['DATE TIME'])
+        df['OBS DATE'] = pd.to_datetime(df['OBS DATE'])
+        df = df.drop(columns=['DATE TIME'])
+        first_idx = df['VALUE'].first_valid_index()
+        last_idx = df['VALUE'].last_valid_index()
+        return df.loc[first_idx:last_idx]

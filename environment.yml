@@ -14,6 +14,10 @@ dependencies:
   - pytest
   #data
   - pandas
+  - dask
+  - numba
+  - aiohttp
+  - requests
   # support for html parsing
   - lxml
   - html5lib

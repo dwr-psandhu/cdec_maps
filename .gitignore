@@ -1,6 +1,8 @@
 **/.ipynb_checkpoints
 tests/data
 *.dss
+# dask workspace
+**/dask-worker-space
 # python pickled data
 **/*.pkl 
 # Byte-compiled / optimized / DLL files
