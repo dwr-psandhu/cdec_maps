@@ -3,6 +3,22 @@ import pandas as pd
 from dask import dataframe as dd
 from .cdec_cache import cache_to_file
 
+DURATION_MAP = {'(event)': 'E', '(daily)': 'D',
+                '(monthly)': 'M', '(hourly)': 'H'}
+DURATION_MAP_INVERTED = {DURATION_MAP[k]: k for k in DURATION_MAP.keys()}
+
+
+def get_duration_code(duration):
+    return DURATION_MAP[duration]
+
+
+def to_date_format(str):
+    try:
+        return pd.to_datetime(str).strftime('%Y-%m-%d')
+    except:
+        return ''
+
+
 class Reader(param.Parameterized):
     cdec_base_url = param.String(default="http://cdec.water.ca.gov",
                                  allow_None=False, regex='http://.*')
@@ -26,6 +42,7 @@ class Reader(param.Parameterized):
     def read_sensor_list(self):
         return self._read_single_table(self.cdec_base_url + "/misc/senslist.html")
 
+    @cache_to_file(list=True, expires='5D')
     def read_station_meta_info(self, station_id):
         tables = pd.read_html(self.cdec_base_url + '/dynamicapp/staMeta?station_id=%s' % station_id)
         # table[0] should be station meta info
@@ -74,12 +91,12 @@ class Reader(param.Parameterized):
         else:
             return end, start
 
-    def read_station_data(self, station_id, sensor_number, duration_code, start, end):
+    def _undecorated_read_station_data(self, station_id, sensor_number, duration_code, start, end):
         '''
         Using dask read CDEC via multiple threads which is quite fast and scales as much as CDEC services will allow
         '''
         # make sure start and end are in the right order, start < order
-        start, end = self._sort_times(start, end)  
+        start, end = self._sort_times(start, end)
         start_year = self.to_year(start)
         end_year = self.to_year(end) + 1
         url = self.cdec_base_url + \
@@ -96,4 +113,27 @@ class Reader(param.Parameterized):
         df.index = pd.to_datetime(df['DATE TIME'])
         df['OBS DATE'] = pd.to_datetime(df['OBS DATE'])
         df = df.drop(columns=['DATE TIME'])
+        return df
+
+    @cache_to_file(expires='1H')
+    def read_station_data(self, station_id, sensor_number, duration_code, start, end):
+        '''
+        Using dask read CDEC via multiple threads which is quite fast and scales as much as CDEC services will allow
+        '''
+        df = self._undecorated_read_station_data(
+            station_id, sensor_number, duration_code, start, end)
         return df.loc[pd.to_datetime(start):pd.to_datetime(end)]
+
+    ###
+    def read_entire_station_data_for(self, station_id, sensor_number, duration_code):
+        dflist = self.read_station_meta_info(station_id)
+        df_sensors = dflist[1]
+        sensor_row = df_sensors[(df_sensors['Sensor Number'] == int(sensor_number)) & (
+            df_sensors['Duration'] == DURATION_MAP_INVERTED[duration_code])].iloc[0]
+        sdate, edate = tuple([s.strip()
+                            for s in sensor_row['Data Available'].split('to')])
+        df = self._undecorated_read_station_data(station_id, sensor_number, duration_code,
+                                    to_date_format(sdate), to_date_format(edate))
+        return df
+
+################# MODULE LEVEL methods ###################################
