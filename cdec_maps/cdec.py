@@ -1,7 +1,7 @@
 import param
 import pandas as pd
 from dask import dataframe as dd
-
+from .cdec_cache import cache_to_file
 
 class Reader(param.Parameterized):
     cdec_base_url = param.String(default="http://cdec.water.ca.gov",
@@ -14,12 +14,15 @@ class Reader(param.Parameterized):
         df = pd.read_html(url)
         return df[0]
 
+    @cache_to_file(expires='5D')
     def read_daily_stations(self):
         return self._read_single_table(self.cdec_base_url + "/misc/dailyStations.html")
 
+    @cache_to_file(expires='5D')
     def read_realtime_stations(self):
         return self._read_single_table(self.cdec_base_url + "/misc/realStations.html")
 
+    @cache_to_file(expires='5D')
     def read_sensor_list(self):
         return self._read_single_table(self.cdec_base_url + "/misc/senslist.html")
 
