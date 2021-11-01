@@ -70,10 +70,13 @@ def cache_to_file(list=False, expires='1D', cache_dir='cdec_cache', data=True):
                 elif needs_updating(cache_file):
                     if func.__name__ == 'read_station_data':  # need update strategy here
                         result = read_cache(cache_file)
-                        sdate = result.index[-1].strftime('%Y-%m-%d')
-                        dflatest = args[0]._undecorated_read_station_data(
-                            args[1], args[2], args[3], sdate, '')
-                        result = dflatest.combine_first(result)  # updates with latest fetched
+                        if result.empty: # edge case if cache file has no data :(
+                            result = args[0].read_entire_station_data_for(args[1], args[2], args[3])
+                        else:
+                            sdate = result.index[-1].strftime('%Y-%m-%d')
+                            dflatest = args[0]._undecorated_read_station_data(
+                                args[1], args[2], args[3], sdate, '')
+                            result = dflatest.combine_first(result)  # updates with latest fetched
                     else:
                         result = func(*args, **kwargs)
                     write_cache(result, cache_file)
