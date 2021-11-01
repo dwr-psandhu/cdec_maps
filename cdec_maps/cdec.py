@@ -86,10 +86,12 @@ class Reader(param.Parameterized):
         return self._to_datetime(dstr).year
 
     def _sort_times(self, start, end):
-        if self._to_datetime(start) < self._to_datetime(end):
-            return start, end
+        stime = self._to_datetime(start)
+        etime = self._to_datetime(end)
+        if stime < etime:
+            return to_date_format(stime), to_date_format(etime)
         else:
-            return end, start
+            return  to_date_format(etime), to_date_format(stime)
 
     def _undecorated_read_station_data(self, station_id, sensor_number, duration_code, start, end):
         '''
@@ -120,6 +122,7 @@ class Reader(param.Parameterized):
         '''
         Using dask read CDEC via multiple threads which is quite fast and scales as much as CDEC services will allow
         '''
+        start, end = self._sort_times(start, end)
         df = self._undecorated_read_station_data(
             station_id, sensor_number, duration_code, start, end)
         return df.loc[pd.to_datetime(start):pd.to_datetime(end)]
