@@ -125,7 +125,7 @@ class Reader(param.Parameterized):
         start, end = self._sort_times(start, end)
         df = self._undecorated_read_station_data(
             station_id, sensor_number, duration_code, start, end)
-        return df.loc[pd.to_datetime(start):pd.to_datetime(end)]
+        return df[(df.index >= start) & (df.index <= end)] # more robust then df.loc[pd.to_datetime(start):pd.to_datetime(end)]
 
     ###
     def read_entire_station_data_for(self, station_id, sensor_number, duration_code):
