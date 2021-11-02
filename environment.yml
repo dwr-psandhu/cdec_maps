@@ -18,6 +18,8 @@ dependencies:
   - numba
   - aiohttp
   - requests
+  # decorator support for caching
+  - decorator
   # support for html parsing
   - lxml
   - html5lib
