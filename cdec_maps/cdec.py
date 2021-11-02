@@ -30,19 +30,19 @@ class Reader(param.Parameterized):
         df = pd.read_html(url)
         return df[0]
 
-    @cache_to_file(expires='5D')
+    @cache_to_file(expires='1D')
     def read_daily_stations(self):
         return self._read_single_table(self.cdec_base_url + "/misc/dailyStations.html")
 
-    @cache_to_file(expires='5D')
+    @cache_to_file(expires='1D')
     def read_realtime_stations(self):
         return self._read_single_table(self.cdec_base_url + "/misc/realStations.html")
 
-    @cache_to_file(expires='5D')
+    @cache_to_file(expires='1D')
     def read_sensor_list(self):
         return self._read_single_table(self.cdec_base_url + "/misc/senslist.html")
 
-    @cache_to_file(list=True, expires='5D')
+    @cache_to_file(list=True, expires='1D')
     def read_station_meta_info(self, station_id):
         tables = pd.read_html(self.cdec_base_url + '/dynamicapp/staMeta?station_id=%s' % station_id)
         # table[0] should be station meta info

@@ -48,11 +48,11 @@ def cache_to_file(list=False, expires='1D', cache_dir='cdec_cache', data=True):
             #
             ensure_dir(cache_dir)
             if list:
-                cached_files = glob.glob(f"{cache_dir}/{func.__name__}.*.pkl")
+                cached_files = glob.glob(f"{cache_dir}/{func.__name__}.{args[1]}.*.pkl")
                 if not cached_files or any([needs_refresh(fname) for fname in cached_files]):
                     result = func(*args, **kwargs)
                     for i, r in enumerate(result):
-                        write_cache(r, f"{cache_dir}/{func.__name__}.{i}.pkl")
+                        write_cache(r, f"{cache_dir}/{func.__name__}.{args[1]}.{i}.pkl")
                 else:
                     result = [read_cache(fname) for fname in cached_files]
             else:
