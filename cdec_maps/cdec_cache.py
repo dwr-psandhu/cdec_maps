@@ -80,5 +80,5 @@ def cache_to_file(func, list=False, expires='1D', cache_dir='cdec_cache', *args,
             result = read_cache(cache_file)
         if func.__name__ == 'read_station_data':  # then subset to desired time window
             start, end = args[0]._sort_times(args[4], args[5])
-            result = result.loc[pd.to_datetime(start):pd.to_datetime(end)]
+            result = result[(result.index >= start) & (result.index <= end)] # more robust then result.loc[pd.to_datetime(start):pd.to_datetime(end)]
     return result
