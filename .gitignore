@@ -9,7 +9,8 @@ tests/data
 __pycache__/
 *.py[cod]
 *$py.class
-
+# vs code stuff
+.vscode/
 # C extensions
 *.so
 

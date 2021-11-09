@@ -7,6 +7,7 @@ import glob
 import pandas as pd
 from decorator import decorator
 
+
 @decorator
 def cache_to_file(func, list=False, expires='1D', cache_dir='cdec_cache', *args, **kwargs):
     """Caches Dataframe returned by function to filename (name of function + '.pkl')
@@ -41,6 +42,12 @@ def cache_to_file(func, list=False, expires='1D', cache_dir='cdec_cache', *args,
 
     def write_cache(df, fname):
         df.to_pickle(fname)
+
+    # set per instance cache_dir
+    try:
+        cache_dir = args[0].cache_dir
+    except:
+        pass
     #
     ensure_dir(cache_dir)
     if list:
@@ -66,7 +73,7 @@ def cache_to_file(func, list=False, expires='1D', cache_dir='cdec_cache', *args,
         elif needs_updating(cache_file):
             if func.__name__ == 'read_station_data':  # need update strategy here
                 result = read_cache(cache_file)
-                if result.empty: # edge case if cache file has no data :(
+                if result.empty:  # edge case if cache file has no data :(
                     result = args[0].read_entire_station_data_for(args[1], args[2], args[3])
                 else:
                     sdate = result.index[-1].strftime('%Y-%m-%d')
@@ -80,5 +87,6 @@ def cache_to_file(func, list=False, expires='1D', cache_dir='cdec_cache', *args,
             result = read_cache(cache_file)
         if func.__name__ == 'read_station_data':  # then subset to desired time window
             start, end = args[0]._sort_times(args[4], args[5])
-            result = result[(result.index >= start) & (result.index <= end)] # more robust then result.loc[pd.to_datetime(start):pd.to_datetime(end)]
+            # more robust then result.loc[pd.to_datetime(start):pd.to_datetime(end)]
+            result = result[(result.index >= start) & (result.index <= end)]
     return result

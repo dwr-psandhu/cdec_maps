@@ -18,13 +18,13 @@ def to_date_format(str):
     except:
         return ''
 
-
 class Reader(param.Parameterized):
     cdec_base_url = param.String(default="http://cdec.water.ca.gov",
                                  allow_None=False, regex='http://.*')
 
-    def __init__(self, cdec_base_url="http://cdec.water.ca.gov"):
+    def __init__(self, cdec_base_url="http://cdec.water.ca.gov", cache_dir='cdec_cache'):
         self.cdec_base_url = cdec_base_url
+        self.cache_dir = cache_dir
 
     def _read_single_table(self, url):
         df = pd.read_html(url)
@@ -42,15 +42,32 @@ class Reader(param.Parameterized):
     def read_sensor_list(self):
         return self._read_single_table(self.cdec_base_url + "/misc/senslist.html")
 
+    @cache_to_file(expires='1D')
+    def read_all_stations(self):
+        daily_stations = self.read_daily_stations()
+        realtime_stations = self.read_realtime_stations()
+        return daily_stations.merge(realtime_stations, how='outer')
+
+    @cache_to_file(expires='1D')
+    def read_all_stations_meta_info(self):
+        all_stations = self.read_all_stations()
+        meta_info_list=[self.read_station_meta_info(station_id)[1].assign(ID=station_id).set_index('ID') for station_id in all_stations.ID]
+        return pd.concat(meta_info_list).astype(dtype={'Sensor Number': 'int'})
+
     @cache_to_file(list=True, expires='1D')
     def read_station_meta_info(self, station_id):
-        tables = pd.read_html(self.cdec_base_url + '/dynamicapp/staMeta?station_id=%s' % station_id)
+        try:
+            tables = pd.read_html(self.cdec_base_url + '/dynamicapp/staMeta?station_id=%s' % station_id)
+        except:
+            return [pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()]
         # table[0] should be station meta info
 
         def _pair_table_columns(df, column_index):
             return df.iloc[:, column_index].set_index(column_index[1]).set_axis(['Value'], axis=1)
         tables[0] = pd.concat([_pair_table_columns(tables[0], [0, 1]),
                               _pair_table_columns(tables[0], [2, 3])])
+        if len(tables) < 2 or len(tables[1].columns) < 6: #missing or comments table only
+            tables.insert(1, pd.DataFrame([],columns=['Sensor Description', 'Sensor Number', 'Duration', 'Plot', 'Data Collection', 'Data Available']))
         if 'Zero Datum' in tables[1].columns:  # For now remove
             datum_table = tables.pop(1)
         else:

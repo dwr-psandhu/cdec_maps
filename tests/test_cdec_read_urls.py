@@ -1,5 +1,5 @@
 
-from cdec_maps import cdec
+from cdec_maps import cdec, cdec_cache
 
 def test_read_all():
     c=cdec.Reader()
@@ -41,3 +41,25 @@ def test_mck(): # test for MCK failed as no comments table but has a datum table
     c = cdec.Reader()
     dflist = c.read_station_meta_info('MCK')
     assert len(dflist) == 4
+
+def test_change_cache_dir():
+    c=cdec.Reader(cache_dir='cdec_cache2')
+    df = c.read_daily_stations()
+    assert not df.empty
+    assert len(df) > 10
+
+def test_undefined_station():
+    c=cdec.Reader()
+    dflist = c.read_station_meta_info('BAW')
+    assert len(dflist) == 4
+    assert dflist[0].empty
+
+def test_station_no_sensors():
+    c=cdec.Reader()
+    dflist = c.read_station_meta_info('NSW')
+    assert len(dflist) == 4
+    assert dflist[1].empty
+
+def test_station():
+    c=cdec.Reader()
+    dflist = c.read_station_meta_info('LSV')

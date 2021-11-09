@@ -1,0 +1,8 @@
+{
+"type": "FeatureCollection",
+"name": "Delta_Simplified",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "OBJECTID": 1, "comments": "final delta boundary", "Source": "Delta Protection Act (Section 12220 Water Code)", "Date_Record_Last_Updated": "2003-02-21T00:00:00", "Edited_By": "Joel Dudas", "Date_Data_Applies_To": "1994-07-29T00:00:00", "GlobalID": "{AAA9F069-1595-4AD9-918C-A0D77921082B}" }, "geometry": { "type": "Polygon", "coordinates": [ [ [ -121.771190143636773, 38.947963304513948 ], [ -121.93513190082524, 38.43112996829273 ], [ -122.182433873533242, 38.300532297312095 ], [ -122.331768142288809, 38.093751725368136 ], [ -122.193548568935853, 38.008771542993664 ], [ -121.782304839039398, 37.769805591837617 ], [ -121.209898025805131, 37.550290357636129 ], [ -121.237684764311652, 38.069902367708004 ], [ -121.387733152246852, 38.617301116286392 ], [ -121.771190143636773, 38.947963304513948 ] ] ] } }
+]
+}
