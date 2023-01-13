@@ -1,8 +1,9 @@
 name: env_cdec_maps
 
 channels:
-  - defaults
+  - pyviz
   - conda-forge
+  - defaults
  
 dependencies:
   #basics
@@ -32,6 +33,8 @@ dependencies:
   - bokeh
   - geoviews
   - spatialpandas
+  #cache
+  - requests-cache
 
 # pip install cdec-maps here 
 # pip install -e . --no-deps
