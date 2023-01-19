@@ -43,7 +43,7 @@ def test_mck(): # test for MCK failed as no comments table but has a datum table
     assert len(dflist) == 4
 
 def test_change_cache_dir():
-    c=cdec.Reader(cache_dir='cdec_cache2')
+    c=cdec.Reader()
     df = c.read_daily_stations()
     assert not df.empty
     assert len(df) > 10

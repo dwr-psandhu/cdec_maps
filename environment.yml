@@ -34,7 +34,7 @@ dependencies:
   - geoviews
   - spatialpandas
   #cache
-  - requests-cache
+  - diskcache
 
 # pip install cdec-maps here 
 # pip install -e . --no-deps
