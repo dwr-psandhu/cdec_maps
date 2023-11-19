@@ -44,7 +44,8 @@ class MapSelectionViewer(param.Parameterized):
 
     @param.depends('selected')
     def view(self):
-        return pn.widgets.DataFrame(self.stations.iloc[self.selected, :])
+        self.selection_view = pn.widgets.DataFrame(self.stations.iloc[self.selected, :])
+        return self.selection_view
         #return pn.pane.Markdown(f'Selected: {self.selected}')
 
     def view(self):
