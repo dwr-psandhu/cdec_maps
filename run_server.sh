@@ -1,2 +1,3 @@
 #pip install --no-deps -e .
-panel serve notebooks/cdec_precip_map.ipynb --address 0.0.0.0 --port 80 --allow-websocket-origin="*"
+python cdec_maps/cdec_cache_build.py &
+panel serve cdec_maps/cdec_maps_servable.py --address 0.0.0.0 --port 80 --allow-websocket-origin="*"

@@ -1,40 +1,34 @@
-name: env_cdec_maps
-
+name: cdec_maps
 channels:
-  - pyviz
+  - cadwr-dms
   - conda-forge
-  - defaults
- 
 dependencies:
-  #basics
-  - python=3.8
+  - python=3.11
   - pip
   - ipykernel
-  - autopep8
-  #for tests
-  - pytest
-  #data
+  - pyarrow
   - pandas
   - dask
   - numba
   - aiohttp
   - requests
-  # decorator support for caching
   - decorator
-  # support for html parsing
   - lxml
   - html5lib
   - bs4
-  #visualization
+  - cartopy
   - geopandas
-  - holoviews 
+  - holoviews
   - hvplot
   - matplotlib
   - bokeh
   - geoviews
   - spatialpandas
-  #cache
+  - panel
   - diskcache
-
+  - tqdm
+  - vtools3
+  - pydsm
+  - pydelmod
 # pip install cdec-maps here 
 # pip install -e . --no-deps
