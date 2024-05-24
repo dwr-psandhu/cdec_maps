@@ -18,7 +18,6 @@ import panel as pn
 
 pn.extension()
 #
-import pyhecdss as dss
 from vtools.functions.filter import cosine_lanczos
 
 from pydelmod.dataui import DataUI, full_stack
@@ -277,5 +276,4 @@ def show_cdec_ui():
     )
     uimgr = CDECDataUIManager(geodf, reader, time_range=time_range)
     ui = DataUI(uimgr, crs=crs_cartopy)
-    ui.create_view().servable()
-    return ui.create_view()
+    return ui.create_view().servable()
