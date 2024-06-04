@@ -275,5 +275,5 @@ def show_cdec_ui():
         datetime.now(),
     )
     uimgr = CDECDataUIManager(geodf, reader, time_range=time_range)
-    ui = DataUI(uimgr, crs=crs_cartopy)
+    ui = DataUI(uimgr, crs=crs_cartopy, station_id_column="ID")
     return ui.create_view().servable()
