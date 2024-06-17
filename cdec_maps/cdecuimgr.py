@@ -50,8 +50,13 @@ class CDECDataUIManager(TimeSeriesDataUIManager):
         super().__init__(filename_column="Source", **kwargs)
 
     def get_widgets(self):
+        from tqdm.dask import TqdmCallback
+        import tqdm
+
+        cb = TqdmCallback(desc="cdec", tqdm_class=tqdm.tqdm)
+        cb.register()
         control_widgets = super().get_widgets()
-        control_widgets.append(pn.WidgetBox(self.param.sensor_selections))
+        control_widgets.append(pn.WidgetBox())
         return control_widgets
 
     # data related methods
@@ -93,29 +98,52 @@ class CDECDataUIManager(TimeSeriesDataUIManager):
         return column_width_map
 
     def get_table_filters(self):
-        table_filters = {
-            "ID": {"type": "input", "func": "like", "placeholder": "Enter match"},
-            "Station": {"type": "input", "func": "like", "placeholder": "Enter match"},
-            "County": {"type": "input", "func": "like", "placeholder": "Enter match"},
-            "River Basin": {
-                "type": "input",
-                "func": "like",
-                "placeholder": "Enter match",
-            },
-            "Sensor": {"type": "input", "func": "like", "placeholder": "Enter match"},
-            "Sensor Number": {
-                "type": "input",
-                "func": "like",
-                "placeholder": "Enter match",
-            },
-            "Units": {"type": "input", "func": "like", "placeholder": "Enter match"},
-            "Duration": {"type": "input", "func": "like", "placeholder": "Enter match"},
-            "Description": {
-                "type": "input",
-                "func": "like",
-                "placeholder": "Enter match",
-            },
-        }
+        if True:
+            table_filters = {}
+        else:
+            table_filters = {
+                "ID": {"type": "input", "func": "like", "placeholder": "Enter match"},
+                "Station": {
+                    "type": "input",
+                    "func": "like",
+                    "placeholder": "Enter match",
+                },
+                "County": {
+                    "type": "input",
+                    "func": "like",
+                    "placeholder": "Enter match",
+                },
+                "River Basin": {
+                    "type": "input",
+                    "func": "like",
+                    "placeholder": "Enter match",
+                },
+                "Sensor": {
+                    "type": "input",
+                    "func": "like",
+                    "placeholder": "Enter match",
+                },
+                "Sensor Number": {
+                    "type": "input",
+                    "func": "like",
+                    "placeholder": "Enter match",
+                },
+                "Units": {
+                    "type": "input",
+                    "func": "like",
+                    "placeholder": "Enter match",
+                },
+                "Duration": {
+                    "type": "input",
+                    "func": "like",
+                    "placeholder": "Enter match",
+                },
+                "Description": {
+                    "type": "input",
+                    "func": "like",
+                    "placeholder": "Enter match",
+                },
+            }
         return table_filters
 
     def _append_value(self, new_value, value):
@@ -181,9 +209,8 @@ class CDECDataUIManager(TimeSeriesDataUIManager):
                 if freq_str:
                     df = df.resample(freq_str).mean()
                 else:
-                    raise ValueError(
-                        f"Cannot infer frequency for: {station_id}/{sensor_desc}"
-                    )
+                    # assume 15min data
+                    df = df.resample("15min").mean()
             else:
                 df = df.resample(duration_code).mean()
         return df, unit, ptype
