@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools", "wheel", "versioneer"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cdec-maps"
+description = "CDEC Maps and Dashboards"
+license = { text = "MIT" }
+authors = [
+    { name = "Nicky Sandhu", email = "psandhu@water.ca.gov" }
+]
+urls = { "Homepage" = "https://github.com/dwr-psandhu/cdec-maps" }
+keywords = ["cdec-maps"]
+classifiers = [
+    "Programming Language :: Python :: 2.7",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7"
+]
+dynamic= ["version"]
+dependencies = [
+    "python==3.11",
+    "ipykernel",
+    "pyarrow",
+    "pandas",
+    "dask",
+    "numba",
+    "aiohttp",
+    "requests",
+    "decorator",
+    "lxml",
+    "html5lib",
+    "beautifulsoup4",
+    "cartopy",
+    "geopandas",
+    "holoviews",
+    "hvplot",
+    "matplotlib",
+    "bokeh",
+    "geoviews",
+    "spatialpandas",
+    "panel"
+]
+
+[project.scripts]
+cdec_maps = "cdec_maps.cli:cli"
+
+[tool.versioneer]
+VCS = "git"
+style = "pep440"
+versionfile_source = "cdec_maps/_version.py"
+versionfile_build = "cdec_maps/_version.py"
+tag_prefix = ""
+parentdir_prefix = "cdec-maps-"
