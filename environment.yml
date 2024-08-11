@@ -24,11 +24,12 @@ dependencies:
   - bokeh
   - geoviews
   - spatialpandas
-  - panel
   - diskcache
   - tqdm
   - vtools3
   - pydsm
   - pydelmod
+  - pip:
+    - panel==1.5.0b3 # temporary till 1.5.0 is released
 # pip install cdec-maps here 
 # pip install -e . --no-deps

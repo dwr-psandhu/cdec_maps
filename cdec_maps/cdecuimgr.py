@@ -98,7 +98,7 @@ class CDECDataUIManager(TimeSeriesDataUIManager):
         return column_width_map
 
     def get_table_filters(self):
-        if True:
+        if False:
             table_filters = {}
         else:
             table_filters = {
