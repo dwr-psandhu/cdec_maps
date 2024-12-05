@@ -17,24 +17,17 @@ dependencies:
   - html5lib
   - bs4
   - cartopy
-  #- geopandas
-  #- holoviews
-  #- hvplot
+  - geopandas
+  - holoviews
+  - hvplot
   - matplotlib
-  #- bokeh
-  #- geoviews
-  #- spatialpandas
+  - bokeh
+  - geoviews
+  - spatialpandas
+  - panel
   - diskcache
   - tqdm
   - vtools3
   - pydsm
   - pydelmod
-  - pip: #FIXME: temporary till 1.5.0 is released
-    - holoviews
-    - hvplot
-    - geopandas
-    - geoviews
-    - spatialpandas
-    - panel==1.5.0b3
-# pip install cdec-maps here
-# pip install -e . --no-deps
+#  pip install -e . --no-deps
