@@ -146,6 +146,9 @@ class CDECDataUIManager(TimeSeriesDataUIManager):
             }
         return table_filters
 
+    def is_irregular(self, r):
+        return False
+
     def _append_value(self, new_value, value):
         if new_value not in value:
             value += f'{", " if value else ""}{new_value}'
