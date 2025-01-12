@@ -3,7 +3,7 @@ channels:
   - cadwr-dms
   - conda-forge
 dependencies:
-  - python=3.11
+  - python
   - pip
   - ipykernel
   - pyarrow

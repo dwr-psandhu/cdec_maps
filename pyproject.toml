@@ -18,7 +18,7 @@ classifiers = [
 ]
 dynamic= ["version"]
 dependencies = [
-    "python==3.11",
+    "python",
     "ipykernel",
     "pyarrow",
     "pandas",
