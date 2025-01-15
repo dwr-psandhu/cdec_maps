@@ -217,6 +217,14 @@ class Reader(param.Parameterized):
     def build_db_path(self, station_id, sensor_number, duration_code):
         return f"{self.dbase_dir}/{station_id}__{sensor_number}__{duration_code}.prq"
 
+    def remove_from_db(self, station_id, sensor_number, duration_code):
+        import os
+
+        try:
+            os.remove(self.build_db_path(station_id, sensor_number, duration_code))
+        except:
+            pass
+
     def load_from_db(self, station_id, sensor_number, duration_code):
         return pd.read_parquet(
             self.build_db_path(station_id, sensor_number, duration_code)

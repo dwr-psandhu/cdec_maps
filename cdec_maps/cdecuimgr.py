@@ -33,6 +33,11 @@ class CDECDataUIManager(TimeSeriesDataUIManager):
         doc="Select one or more sensors to display",
     )
 
+    bypass_cache = param.Boolean(
+        default=False,
+        doc="Bypass cache for reading data. Still builds cache but rebuilds from CDEC.",
+    )
+
     def __init__(self, dfcat, reader, **kwargs):
         """
         geolocations is a geodataframe with station_id, and geometry columns
@@ -57,6 +62,7 @@ class CDECDataUIManager(TimeSeriesDataUIManager):
         cb.register()
         control_widgets = super().get_widgets()
         control_widgets.append(pn.WidgetBox())
+        control_widgets.append(pn.Row(self.param.bypass_cache))
         return control_widgets
 
     # data related methods
@@ -197,6 +203,12 @@ class CDECDataUIManager(TimeSeriesDataUIManager):
         duration_code = cdec.get_duration_code(row["Duration"])
         start = time_range[0].strftime("%Y-%m-%d")
         end = time_range[1].strftime("%Y-%m-%d")
+        if self.bypass_cache:
+            df = self.reader.remove_from_db(
+                station_id,
+                sensor_number,
+                duration_code,
+            )
         df = self.reader.read_station_data(
             station_id, sensor_number, duration_code, start, end
         )
