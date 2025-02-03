@@ -260,6 +260,27 @@ class CDECDataUIManager(TimeSeriesDataUIManager):
 
         return list(MarkerType)
 
+    def get_version(self):
+        return "1.0.0 - 2/3/2025"
+
+    def get_about_text(self):
+        return """
+        # CDEC Data UI Manager
+         
+        This is a UI manager for CDEC data. It provides a user interface to interact with CDEC data.
+        
+        ## Features
+        - Select sensors to display
+        - Filter data by time range
+        - View data in a table and map
+        ## How to use
+        1. Select sensors to display from the dropdown menu.
+        2. Filter data by time range using the date picker.
+        3. View data in a table and map.
+        
+        
+        """
+
 
 def show_cdec_ui():
     """
