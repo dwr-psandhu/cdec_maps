@@ -1,5 +1,7 @@
 **/cdec_cache # cdec cache
 **/.ipynb_checkpoints
+cache*
+**/*.csv
 tests/data
 *.dss
 *.prq
