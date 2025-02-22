@@ -302,6 +302,10 @@ def show_cdec_ui():
     stations_meta_info["Start Date"].min(), stations_meta_info["End Date"].max()
     # add source column
     stations_meta_info["Source"] = "CDEC"
+    # convert Sensor Number to string
+    stations_meta_info["Sensor Number"] = stations_meta_info["Sensor Number"].astype(
+        str
+    )
     if all(column in stations.columns for column in ["Latitude", "Longitude"]):
         geodf = gpd.GeoDataFrame(
             stations_meta_info,
