@@ -20,8 +20,8 @@ pn.extension()
 #
 from vtools.functions.filter import cosine_lanczos
 
-from pydelmod.dataui import DataUI, full_stack
-from pydelmod.tsdataui import TimeSeriesDataUIManager
+from pydelmod.dvue.dataui import DataUI, full_stack
+from pydelmod.dvue.tsdataui import TimeSeriesDataUIManager
 from . import cdec
 
 
@@ -71,9 +71,6 @@ class CDECDataUIManager(TimeSeriesDataUIManager):
 
     def build_station_name(self, r):
         return r["ID"]
-
-    def _get_station_ids(self, df):
-        return list((df.apply(self.build_station_name, axis=1).astype(str).unique()))
 
     def get_time_range(self, dfcat):
         """
@@ -160,7 +157,7 @@ class CDECDataUIManager(TimeSeriesDataUIManager):
             value += f'{", " if value else ""}{new_value}'
         return value
 
-    def _append_to_title_map(self, title_map, unit, r):
+    def append_to_title_map(self, title_map, unit, r):
         if unit in title_map:
             value = title_map[unit]
         else:
@@ -171,11 +168,11 @@ class CDECDataUIManager(TimeSeriesDataUIManager):
         value[3] = self._append_value(r["Description"], value[3])
         title_map[unit] = value
 
-    def _create_title(self, v):
+    def create_title(self, v):
         title = f"{v[1]} @ {v[2]} ({v[3]}::{v[0]})"
         return title
 
-    def _create_crv(self, df, r, unit, file_index=None):
+    def create_curve(self, df, r, unit, file_index=None):
         file_index_label = f"{file_index}:" if file_index is not None else ""
         crvlabel = f'{file_index_label}{r["ID"]}/{r["Sensor"]}'
         ylabel = f'{r["Sensor"]} ({unit})'
@@ -194,7 +191,7 @@ class CDECDataUIManager(TimeSeriesDataUIManager):
             tools=["hover"],
         )
 
-    def _get_data_for_time_range(self, row, time_range):
+    def get_data_for_time_range(self, row, time_range):
         irreg = False  # TODO: set this based on some metadata, but for now all is regular time series
         unit = row["Units"]
         station_id = row["ID"]
