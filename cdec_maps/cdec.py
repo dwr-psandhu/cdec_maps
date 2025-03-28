@@ -6,6 +6,18 @@ import diskcache as dc
 DURATION_MAP = {"(event)": "E", "(daily)": "D", "(monthly)": "M", "(hourly)": "H"}
 DURATION_MAP_INVERTED = {DURATION_MAP[k]: k for k in DURATION_MAP.keys()}
 
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+
+def ensure_dir_exists(dir):
+    import os
+
+    if not os.path.exists(dir):
+        os.makedirs(dir)
+
 
 def get_duration_code(duration):
     return DURATION_MAP[duration]
@@ -51,6 +63,7 @@ class Reader(param.Parameterized):
     def __init__(self, cdec_base_url="http://cdec.water.ca.gov", dbase_dir="cdec_db"):
         self.cdec_base_url = cdec_base_url
         self.dbase_dir = dbase_dir
+        ensure_dir_exists(self.dbase_dir)
 
     def _read_single_table(self, url):
         df = pd.read_html(url)
@@ -77,86 +90,86 @@ class Reader(param.Parameterized):
     @cache.memoize(name="all_stations_meta_info", ignore=[0])
     def read_all_stations_meta_info(self):
         all_stations = self.read_all_stations()
+        sensor_list = self.read_sensor_list()
         meta_info_list = [
-            self.read_station_meta_info(station_id)[1]
-            .assign(ID=station_id)
-            .set_index("ID")
-            for station_id in all_stations.ID
+            self.read_station_meta_info(station_id)[1].assign(ID=station_id)
+            for station_id in tqdm.tqdm(all_stations.ID)
         ]
-        return pd.concat(meta_info_list).astype(dtype={"Sensor Number": "int"})
+        station_meta_infos = pd.concat(meta_info_list).astype(
+            dtype={"Sensor Number": "int"}
+        )
+        station_meta_infos = station_meta_infos.merge(
+            sensor_list, left_on="Sensor Number", right_on="Sensor No"
+        )
+        station_meta_infos = station_meta_infos.merge(all_stations, on="ID")
+        return station_meta_infos
 
     @cache.memoize(name="station_meta_info", ignore=[0])
     def read_station_meta_info(self, station_id):
         try:
             url = self.cdec_base_url + "/dynamicapp/staMeta?station_id=%s" % station_id
-            tables = pd.read_html(url)
-        except:
-            return [pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()]
-        # table[0] should be station meta info
-
-        def _pair_table_columns(df, column_index):
-            return (
-                df.iloc[:, column_index]
-                .set_index(column_index[0])
-                .set_axis(["Value"], axis=1)
-            )
-
-        tables[0] = pd.concat(
-            [
-                _pair_table_columns(tables[0], [0, 1]),
-                _pair_table_columns(tables[0], [2, 3]),
+            tables = pd.read_html(url, match="Sensor Description|Station ")
+        except Exception as e:
+            logger.error(f"Failed to read station meta info for {station_id}: {e}")
+            return [
+                pd.DataFrame(),
+                pd.DataFrame(),
             ]
-        )
-        if (
-            len(tables) < 2 or len(tables[1].columns) < 6
-        ):  # missing or comments table only
-            tables.insert(
-                1,
-                pd.DataFrame(
-                    [],
-                    columns=[
-                        "Sensor Description",
-                        "Sensor Number",
-                        "Duration",
-                        "Plot",
-                        "Data Collection",
-                        "Data Available",
-                    ],
-                ),
+        # table[0] should be station meta info
+        logger.debug(f"Read {len(tables)} tables")
+        try:
+
+            def _pair_table_columns(df, column_index):
+                return (
+                    df.iloc[:, column_index]
+                    .set_index(column_index[0])
+                    .set_axis(["Value"], axis=1)
+                )
+
+            station_info_table = pd.concat(
+                [
+                    _pair_table_columns(tables[0], [0, 1]),
+                    _pair_table_columns(tables[0], [2, 3]),
+                ]
             )
-        if "Zero Datum" in tables[1].columns:  # For now remove
-            datum_table = tables.pop(1)
-        else:
-            datum_table = pd.DataFrame(
+        except Exception as e:
+            logger.error(f"Failed to read station meta info for {station_id}: {e}")
+            return [
+                pd.DataFrame(),
+                pd.DataFrame(),
+            ]
+        try:
+            sensor_table = pd.DataFrame(
                 [],
                 [
-                    "Zero Datum",
-                    "Adj To NGVD",
-                    "Peak of Record",
-                    "Monitor Stage",
-                    "Flood Stage",
-                    "Guidance Plots",
+                    "Sensor Description",
+                    "Sensor Number",
+                    "Duration",
+                    "Plot",
+                    "Data Collection",
+                    "Data Available",
                 ],
             )
-        # table[1] should be station sensor info
-        tables[1] = tables[1].set_axis(
-            [
-                "Sensor Description",
-                "Sensor Number",
-                "Duration",
-                "Plot",
-                "Data Collection",
-                "Data Available",
-            ],
-            axis=1,
-        )
-        # table[2] should be station comments
-        if len(tables) > 2:
-            tables[2] = tables[2].set_axis(["Date", "Comment"], axis=1)
-        else:
-            tables.append(pd.DataFrame([], columns=["Date", "Comment"]))
-        tables.append(datum_table)
-        return tables
+            sensor_table = tables[1]
+            sensor_table = sensor_table.set_axis(
+                [
+                    "Sensor Description",
+                    "Sensor Number",
+                    "Duration",
+                    "Plot",
+                    "Data Collection",
+                    "Data Available",
+                ],
+                axis=1,
+            )
+        except Exception as e:
+            logger.error(f"Failed to read sensor meta info for {station_id}: {e}")
+            sensor_table = pd.DataFrame()
+
+        return [
+            station_info_table,
+            sensor_table,
+        ]
 
     def read_station_data_using_dask(
         self, station_id, sensor_number, duration_code, start, end

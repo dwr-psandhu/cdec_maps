@@ -1,3 +1,4 @@
+import click
 from cdec_maps import cdec
 import pandas as pd
 import tqdm
@@ -15,7 +16,12 @@ def download_row(row, reader):
     return df, unit, sensor_desc
 
 
-def download_all():
+def download_all_stations_info():
+    reader = cdec.Reader()
+    reader.save_all_stations_info()
+
+
+def download_all_stations_data():
     reader = cdec.Reader()
     stations, sensor_list, stations_meta_info = reader.read_saved_stations_info()
     # Assuming stations_meta_info is your dataframe
@@ -43,4 +49,6 @@ def download_all():
 
 
 if __name__ == "__main__":
-    download_all()
+    cdec.clear()  # if you want to clear the cache
+    download_all_stations_info()
+    download_all_stations_data()
