@@ -46,8 +46,8 @@ def load_explorer():
     # Add the disclaimer text to the modal
     template.modal.append(
         """
-        CDEC Map Explorer: A view onto CDEC data. 
-        
+        CDEC Map Explorer: A view onto CDEC data.
+
         Disclaimer:
         Information provided by this app is sourced from the California Data Exchange Center (CDEC).
         Please don't rely on this data and refere to original CDEC site for verification.
