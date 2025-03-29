@@ -2,6 +2,9 @@ import param
 import pandas as pd
 from dask import dataframe as dd
 import diskcache as dc
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 DURATION_MAP = {"(event)": "E", "(daily)": "D", "(monthly)": "M", "(hourly)": "H"}
 DURATION_MAP_INVERTED = {DURATION_MAP[k]: k for k in DURATION_MAP.keys()}
@@ -65,8 +68,38 @@ class Reader(param.Parameterized):
         self.dbase_dir = dbase_dir
         ensure_dir_exists(self.dbase_dir)
 
+        # Initialize a session with connection pooling
+        self.session = requests.Session()
+
+        # Configure retry strategy
+        retry_strategy = Retry(
+            total=3,
+            status_forcelist=[429, 500, 502, 503, 504],
+            allowed_methods=["GET"],
+            backoff_factor=1,
+        )
+
+        # Configure connection pooling
+        adapter = HTTPAdapter(
+            max_retries=retry_strategy,
+            pool_connections=10,  # Number of connection pools
+            pool_maxsize=20,  # Connections per pool
+        )
+
+        # Mount the adapter to both http and https
+        self.session.mount("http://", adapter)
+        self.session.mount("https://", adapter)
+
+    def __del__(self):
+        """Clean up session when object is destroyed"""
+        if hasattr(self, "session"):
+            self.session.close()
+
     def _read_single_table(self, url):
-        df = pd.read_html(url)
+        """Use session for HTTP requests instead of direct calls"""
+        response = self.session.get(url)
+        response.raise_for_status()
+        df = pd.read_html(response.text)
         return df[0]
 
     @cache.memoize(name="daily_stations", ignore=[0])
@@ -108,7 +141,10 @@ class Reader(param.Parameterized):
     def read_station_meta_info(self, station_id):
         try:
             url = self.cdec_base_url + "/dynamicapp/staMeta?station_id=%s" % station_id
-            tables = pd.read_html(url, match="Sensor Description|Station ")
+            # Update to use the session
+            response = self.session.get(url)
+            response.raise_for_status()
+            tables = pd.read_html(response.text, match="Sensor Description|Station ")
         except Exception as e:
             logger.error(f"Failed to read station meta info for {station_id}: {e}")
             return [
@@ -175,18 +211,20 @@ class Reader(param.Parameterized):
         self, station_id, sensor_number, duration_code, start, end
     ):
         """
-        Using dask read CDEC via multiple threads which is quite fast and scales as much as CDEC services will allow
+        Using dask with our connection pool
         """
         # make sure start and end are in the right order, start < order
         start, end = sort_times(start, end)
         start_year = to_year(start)
         end_year = to_year(end) + 1
-        url = (
+        url_template = (
             self.cdec_base_url
             + "/dynamicapp/req/CSVDataServletPST?Stations={station_id}&SensorNums={sensor_number}&dur_code={duration_code}&Start=01-01-{start}&End=12-31-{end}+23:59"
         )
+
+        # Prepare URLs
         list_urls = [
-            url.format(
+            url_template.format(
                 station_id=station_id,
                 sensor_number=sensor_number,
                 duration_code=duration_code,
@@ -195,32 +233,57 @@ class Reader(param.Parameterized):
             )
             for syear in range(start_year, end_year)
         ]
-        dtype_map = {
-            "STATION_ID": "category",
-            "DURATION": "category",
-            "SENSOR_NUMBER": "category",
-            "SENSOR_TYPE": "category",
-            "VALUE": "float",
-            "DATA_FLAG": "category",
-            "UNITS": "category",
-        }
-        ddf = dd.read_csv(
-            list_urls,
-            blocksize=None,
-            dtype=dtype_map,
-            na_values={"VALUE": ["---", "ART", "BRT"]},
-            # on_bad_lines="warn",
-        )
-        # parse_dates=['DATE TIME','OBS DATE'] # doesn't work so will have to read in as strings and convert later
-        # dd.visualize(): shows parallel tasks which are executed below
+
+        import io
+        import dask
+
+        # Define a function to fetch a single URL
+        def fetch_url(url):
+            try:
+                response = self.session.get(url)
+                response.raise_for_status()
+                content = response.text
+                dtype_map = {
+                    "STATION_ID": "category",
+                    "DURATION": "category",
+                    "SENSOR_NUMBER": "category",
+                    "SENSOR_TYPE": "category",
+                    "VALUE": "float",
+                    "DATA_FLAG": "category",
+                    "UNITS": "category",
+                }
+                return pd.read_csv(
+                    io.StringIO(content),
+                    dtype=dtype_map,
+                    na_values={"VALUE": ["---", "ART", "BRT"]},
+                )
+            except Exception as e:
+                logger.warning(f"Error fetching {url}: {e}")
+                return pd.DataFrame()
+
+        # Create delayed tasks
+        delayed_tasks = [dask.delayed(fetch_url)(url) for url in list_urls]
+
+        # Compute all tasks
         try:
-            df = ddf.compute(scheduler="synchronous")
+            results = dask.compute(*delayed_tasks)
+            # Filter out empty dataframes
+            results = [df for df in results if not df.empty]
+
+            if not results:
+                raise ValueError(
+                    f"Failed to retrieve any data for {station_id} {sensor_number} {duration_code}"
+                )
+
+            df = pd.concat(results, ignore_index=True)
+
         except Exception as e:
-            print(
-                f"Failed to read data for {station_id} {sensor_number} {duration_code}"
+            logger.error(
+                f"Failed to read data for {station_id} {sensor_number} {duration_code}: {e}"
             )
             raise e
-        # drop duplicate date times, keeping last, TODO: Is this the right thing to do?
+
+        # drop duplicate date times, keeping last
         df = df.drop_duplicates(subset="DATE TIME", keep="last")
         df.index = pd.to_datetime(df["DATE TIME"])
         df["OBS DATE"] = pd.to_datetime(df["OBS DATE"])
