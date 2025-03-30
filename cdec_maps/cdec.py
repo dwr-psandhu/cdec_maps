@@ -1,10 +1,10 @@
 import param
 import pandas as pd
 from dask import dataframe as dd
-import diskcache as dc
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+
 
 DURATION_MAP = {"(event)": "E", "(daily)": "D", "(monthly)": "M", "(hourly)": "H"}
 DURATION_MAP_INVERTED = {DURATION_MAP[k]: k for k in DURATION_MAP.keys()}
@@ -53,10 +53,6 @@ def sort_times(start, end):
         return to_date_format(etime), to_date_format(stime)
 
 
-cache_dir = "cdec_cache"
-cache = dc.Cache(cache_dir)
-
-
 class Reader(param.Parameterized):
     cdec_base_url = param.String(
         default="http://cdec.water.ca.gov", allow_None=False, regex="http://.*"
@@ -102,25 +98,20 @@ class Reader(param.Parameterized):
         df = pd.read_html(response.text)
         return df[0]
 
-    @cache.memoize(name="daily_stations", ignore=[0])
     def read_daily_stations(self):
         return self._read_single_table(self.cdec_base_url + "/misc/dailyStations.html")
 
-    @cache.memoize(name="realtime_stations", ignore=[0])
     def read_realtime_stations(self):
         return self._read_single_table(self.cdec_base_url + "/misc/realStations.html")
 
-    @cache.memoize(name="sensor_list", ignore=[0])
     def read_sensor_list(self):
         return self._read_single_table(self.cdec_base_url + "/misc/senslist.html")
 
-    @cache.memoize(name="all_stations", ignore=[0])
     def read_all_stations(self):
         daily_stations = self.read_daily_stations()
         realtime_stations = self.read_realtime_stations()
         return daily_stations.merge(realtime_stations, how="outer")
 
-    @cache.memoize(name="all_stations_meta_info", ignore=[0])
     def read_all_stations_meta_info(self):
         all_stations = self.read_all_stations()
         sensor_list = self.read_sensor_list()
@@ -137,7 +128,6 @@ class Reader(param.Parameterized):
         station_meta_infos = station_meta_infos.merge(all_stations, on="ID")
         return station_meta_infos
 
-    @cache.memoize(name="station_meta_info", ignore=[0])
     def read_station_meta_info(self, station_id):
         try:
             url = self.cdec_base_url + "/dynamicapp/staMeta?station_id=%s" % station_id
@@ -422,7 +412,6 @@ def merge_sensors_with_id(stations, sid):
         return pd.DataFrame()
 
 
-@cache.memoize(name="stations_with_meta")
 def read_stations_with_meta():
     r = Reader()
     stations = r.read_all_stations()
@@ -436,3 +425,8 @@ def read_stations_with_meta():
     )
     stations_with_meta = stations_with_meta.drop(columns=["Sensor No"])
     return stations_with_meta
+
+
+def clear():
+    """Remove the cache files, effectively clearing the cache"""
+    pass
