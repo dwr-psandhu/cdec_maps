@@ -18,7 +18,7 @@ dependencies:
   - bs4
   - cartopy
   - geopandas
-  - holoviews=1.20.0 # temporary pinning for issue #6516
+  - holoviews
   - hvplot
   - matplotlib
   - bokeh
