@@ -4,6 +4,7 @@ from dask import dataframe as dd
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+import functools  # Add import for lru_cache
 
 
 DURATION_MAP = {"(event)": "E", "(daily)": "D", "(monthly)": "M", "(hourly)": "H"}
@@ -91,6 +92,7 @@ class Reader(param.Parameterized):
         if hasattr(self, "session"):
             self.session.close()
 
+    @functools.lru_cache(maxsize=128)
     def _read_single_table(self, url):
         """Use session for HTTP requests instead of direct calls"""
         response = self.session.get(url)
@@ -98,15 +100,19 @@ class Reader(param.Parameterized):
         df = pd.read_html(response.text)
         return df[0]
 
+    @functools.lru_cache(maxsize=128)
     def read_daily_stations(self):
         return self._read_single_table(self.cdec_base_url + "/misc/dailyStations.html")
 
+    @functools.lru_cache(maxsize=128)
     def read_realtime_stations(self):
         return self._read_single_table(self.cdec_base_url + "/misc/realStations.html")
 
+    @functools.lru_cache(maxsize=128)
     def read_sensor_list(self):
         return self._read_single_table(self.cdec_base_url + "/misc/senslist.html")
 
+    @functools.lru_cache(maxsize=128)
     def read_all_stations(self):
         daily_stations = self.read_daily_stations()
         realtime_stations = self.read_realtime_stations()
@@ -128,6 +134,7 @@ class Reader(param.Parameterized):
         station_meta_infos = station_meta_infos.merge(all_stations, on="ID")
         return station_meta_infos
 
+    @functools.lru_cache(maxsize=1024)
     def read_station_meta_info(self, station_id):
         try:
             url = self.cdec_base_url + "/dynamicapp/staMeta?station_id=%s" % station_id
@@ -376,6 +383,7 @@ class Reader(param.Parameterized):
         stations_meta_info.to_csv(f"{self.dbase_dir}/cdec_stations_meta_info.csv")
         return stations, sensor_list, stations_meta_info
 
+    @functools.lru_cache(maxsize=8)
     def read_saved_stations_info(self):
         """Read all the stations and their metadata from local csv files"""
         daily_stations = pd.read_csv(f"{self.dbase_dir}/cdec_daily_stations.csv")
@@ -393,6 +401,7 @@ class Reader(param.Parameterized):
 import tqdm
 
 
+@functools.lru_cache(maxsize=128)
 def read_station_meta_info(stations):
     r = Reader()
     for sid in tqdm.tqdm(stations.ID):
@@ -402,16 +411,18 @@ def read_station_meta_info(stations):
             print(sid)
 
 
+@functools.lru_cache(maxsize=1024)
 def merge_sensors_with_id(stations, sid):
     r = Reader()
     try:
-        _, sensors, _, _ = r.read_station_meta_info(sid)
+        _, sensors = r.read_station_meta_info(sid)
         sensors["ID"] = sid
         return sensors.merge(stations, on="ID")
     except:
         return pd.DataFrame()
 
 
+@functools.lru_cache(maxsize=8)
 def read_stations_with_meta():
     r = Reader()
     stations = r.read_all_stations()
@@ -428,5 +439,19 @@ def read_stations_with_meta():
 
 
 def clear():
-    """Remove the cache files, effectively clearing the cache"""
-    pass
+    """Clear all LRU caches to free memory"""
+    # Clear class method caches
+    Reader._read_single_table.cache_clear()
+    Reader.read_daily_stations.cache_clear()
+    Reader.read_realtime_stations.cache_clear()
+    Reader.read_sensor_list.cache_clear()
+    Reader.read_all_stations.cache_clear()
+    Reader.read_station_meta_info.cache_clear()
+    Reader.read_saved_stations_info.cache_clear()
+
+    # Clear module level function caches
+    read_station_meta_info.cache_clear()
+    merge_sensors_with_id.cache_clear()
+    read_stations_with_meta.cache_clear()
+
+    logging.info("All LRU caches cleared")
