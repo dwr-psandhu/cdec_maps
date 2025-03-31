@@ -24,7 +24,7 @@ dependencies:
   - bokeh
   - geoviews
   - spatialpandas
-  - panel
+  - panel=1.6.1
   - diskcache
   - tqdm
   - vtools3
