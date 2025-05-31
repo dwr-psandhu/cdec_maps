@@ -1,20 +1,41 @@
-from setuptools import setup
-import versioneer
+from setuptools import setup, find_packages
+
+# setup.py is kept for backward compatibility
+# All configuration has been moved to pyproject.toml
 
 requirements = [
-    # package requirements go here
+    "ipykernel",
+    "pyarrow",
+    "pandas",
+    "dask",
+    "numba",
+    "aiohttp",
+    "requests",
+    "decorator",
+    "lxml",
+    "html5lib",
+    "beautifulsoup4",
+    "cartopy",
+    "geopandas",
+    "holoviews",
+    "hvplot",
+    "matplotlib",
+    "bokeh",
+    "geoviews",
+    "spatialpandas",
+    "panel"
 ]
 
 setup(
     name='cdec-maps',
-    version=versioneer.get_version(),
-    cmdclass=versioneer.get_cmdclass(),
+    # Let setuptools_scm handle versioning
+    use_scm_version=True,
     description="CDEC Maps and Dashboards",
     license="MIT",
     author="Nicky Sandhu",
     author_email='psandhu@water.ca.gov',
     url='https://github.com/dwr-psandhu/cdec-maps',
-    packages=['cdec_maps'],
+    packages=find_packages(),
     entry_points={
         'console_scripts': [
             'cdec_maps=cdec_maps.cli:cli'
@@ -23,8 +44,6 @@ setup(
     install_requires=requirements,
     keywords='cdec-maps',
     classifiers=[
-        'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.10'
     ]
 )

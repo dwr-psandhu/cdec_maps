@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools", "wheel", "versioneer"]
+requires = ["setuptools>=45", "wheel", "setuptools_scm>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -12,13 +12,10 @@ authors = [
 urls = { "Homepage" = "https://github.com/dwr-psandhu/cdec-maps" }
 keywords = ["cdec-maps"]
 classifiers = [
-    "Programming Language :: Python :: 2.7",
-    "Programming Language :: Python :: 3.6",
-    "Programming Language :: Python :: 3.7"
+    "Programming Language :: Python :: 3.10"
 ]
-dynamic= ["version"]
+dynamic = ["version"]
 dependencies = [
-    "python",
     "ipykernel",
     "pyarrow",
     "pandas",
@@ -44,10 +41,5 @@ dependencies = [
 [project.scripts]
 cdec_maps = "cdec_maps.cli:cli"
 
-[tool.versioneer]
-VCS = "git"
-style = "pep440"
-versionfile_source = "cdec_maps/_version.py"
-versionfile_build = "cdec_maps/_version.py"
-tag_prefix = ""
-parentdir_prefix = "cdec-maps-"
+[tool.setuptools_scm]
+write_to = "cdec_maps/_version.py"
