@@ -5,6 +5,7 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 import functools  # Add import for lru_cache
+from io import StringIO  # Import StringIO at the module level
 
 
 DURATION_MAP = {"(event)": "E", "(daily)": "D", "(monthly)": "M", "(hourly)": "H"}
@@ -97,7 +98,8 @@ class Reader(param.Parameterized):
         """Use session for HTTP requests instead of direct calls"""
         response = self.session.get(url)
         response.raise_for_status()
-        df = pd.read_html(response.text)
+        # Use StringIO to wrap response text to fix FutureWarning
+        df = pd.read_html(StringIO(response.text))
         return df[0]
 
     @functools.lru_cache(maxsize=128)
@@ -141,7 +143,8 @@ class Reader(param.Parameterized):
             # Update to use the session
             response = self.session.get(url)
             response.raise_for_status()
-            tables = pd.read_html(response.text, match="Sensor Description|Station ")
+            # Use StringIO to wrap response text to fix FutureWarning
+            tables = pd.read_html(StringIO(response.text), match="Sensor Description|Station ")
         except Exception as e:
             logger.error(f"Failed to read station meta info for {station_id}: {e}")
             return [
