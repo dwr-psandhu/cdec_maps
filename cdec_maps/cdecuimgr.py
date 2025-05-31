@@ -53,6 +53,11 @@ class CDECDataUIManager(TimeSeriesDataUIManager):
         self.param.sensor_selections.objects = all_sensor_types
         self.sensor_selections = list(all_sensor_types)
         super().__init__(filename_column="Source", **kwargs)
+        self.color_cycle_column = "ID"
+        self.dashed_line_cycle_column = "Duration"
+        self.marker_cycle_column = "Sensor"
+
+
 
     def get_widgets(self):
         from tqdm.dask import TqdmCallback
@@ -174,7 +179,7 @@ class CDECDataUIManager(TimeSeriesDataUIManager):
 
     def create_curve(self, df, r, unit, file_index=None):
         file_index_label = f"{file_index}:" if file_index is not None else ""
-        crvlabel = f'{file_index_label}{r["ID"]}/{r["Sensor"]}'
+        crvlabel = f'{file_index_label}{r["ID"]}/{r["Sensor"]}/ {r["Duration"]}'
         ylabel = f'{r["Sensor"]} ({unit})'
         title = f'{r["Sensor"]} @ {r["ID"]} ({r["Duration"]}/{r["Description"]})'
         irreg = False  # TODO: set this based on some metadata, but for now all is regular time series
