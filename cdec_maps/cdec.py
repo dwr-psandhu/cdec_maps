@@ -57,11 +57,11 @@ def sort_times(start, end):
 
 class Reader(param.Parameterized):
     cdec_base_url = param.String(
-        default="http://cdec.water.ca.gov", allow_None=False, regex="http://.*"
+        default="https://cdec.water.ca.gov", allow_None=False, regex="https://.*"
     )
     dbase_dir = param.String(default="cdec_db", allow_None=False)
 
-    def __init__(self, cdec_base_url="http://cdec.water.ca.gov", dbase_dir="cdec_db"):
+    def __init__(self, cdec_base_url="https://cdec.water.ca.gov", dbase_dir="cdec_db"):
         self.cdec_base_url = cdec_base_url
         self.dbase_dir = dbase_dir
         ensure_dir_exists(self.dbase_dir)
