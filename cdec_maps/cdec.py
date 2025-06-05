@@ -94,8 +94,22 @@ class Reader(param.Parameterized):
             self.session.close()
 
     @functools.lru_cache(maxsize=128)
-    def _read_single_table(self, url):
-        """Use session for HTTP requests instead of direct calls"""
+    def _read_single_table(self, url, table_id=0):
+        """Use session for HTTP requests instead of direct calls
+
+        Parameters:
+        -----------
+        url : str
+            The URL to fetch the HTML table from
+        table_id : int or str, default=0
+            If int: the index of the table to return from the list of tables
+            If str: the id or partial text to match in table attributes
+
+        Returns:
+        --------
+        pandas.DataFrame
+            The parsed HTML table
+        """
         response = self.session.get(url)
         response.raise_for_status()
         dfs = pd.read_html(StringIO(response.text))
@@ -143,9 +157,14 @@ class Reader(param.Parameterized):
 
     @functools.lru_cache(maxsize=128)
     def read_all_stations(self):
-        daily_stations = self.read_daily_stations()
-        realtime_stations = self.read_realtime_stations()
-        return daily_stations.merge(realtime_stations, how="outer")
+        df = self._read_single_table(
+            self.cdec_base_url
+            + "/dynamicapp/staSearch?sta_chk=on&sta=&sensor=211&collect=NONE+SPECIFIED&dur=&active=&lon1=120&lon2=121&lat1=37&lat2=39&elev1=-5&elev2=99000&nearby=&basin=NONE+SPECIFIED&hydro=NONE+SPECIFIED&county=NONE+SPECIFIED&agency_num=0&display=sta",
+            table_id="station_table",
+        )
+        return df.rename(columns={"Station Name": "Station"}).drop(
+            columns=["Map"]
+        )  # make it compatible to older way of merging
 
     def read_all_stations_meta_info(self):
         all_stations = self.read_all_stations()
@@ -171,7 +190,9 @@ class Reader(param.Parameterized):
             response = self.session.get(url)
             response.raise_for_status()
             # Use StringIO to wrap response text to fix FutureWarning
-            tables = pd.read_html(StringIO(response.text), match="Sensor Description|Station ")
+            tables = pd.read_html(
+                StringIO(response.text), match="Sensor Description|Station "
+            )
         except Exception as e:
             logger.error(f"Failed to read station meta info for {station_id}: {e}")
             return [
