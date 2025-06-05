@@ -98,9 +98,36 @@ class Reader(param.Parameterized):
         """Use session for HTTP requests instead of direct calls"""
         response = self.session.get(url)
         response.raise_for_status()
-        # Use StringIO to wrap response text to fix FutureWarning
-        df = pd.read_html(StringIO(response.text))
-        return df[0]
+        dfs = pd.read_html(StringIO(response.text))
+
+        # If table_id is an integer, use it as an index
+        if isinstance(table_id, int):
+            if 0 <= table_id < len(dfs):
+                return dfs[table_id]
+            else:
+                logger.warning(
+                    f"Table index {table_id} out of range (0-{len(dfs)-1}), returning first table"
+                )
+                return dfs[0]
+
+        # If table_id is a string, try to find a matching table
+        elif isinstance(table_id, str) and table_id:
+            # First try exact match on table id attribute if available
+            # This would require parsing the raw HTML with BeautifulSoup or similar
+            # As a simpler approach, we'll look for the table_id text in the table content
+            for i, df in enumerate(dfs):
+                # Convert to string and check if table_id is in the string representation
+                if table_id in str(df):
+                    return df
+
+            # If no match found, return the first table with a warning
+            logger.warning(
+                f"No table matching '{table_id}' found, returning first table"
+            )
+            return dfs[0]
+
+        # Default behavior - return the first table
+        return dfs[0]
 
     @functools.lru_cache(maxsize=128)
     def read_daily_stations(self):
