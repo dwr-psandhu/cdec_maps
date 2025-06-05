@@ -57,8 +57,6 @@ class CDECDataUIManager(TimeSeriesDataUIManager):
         self.dashed_line_cycle_column = "Duration"
         self.marker_cycle_column = "Sensor"
 
-
-
     def get_widgets(self):
         from tqdm.dask import TqdmCallback
         import tqdm
@@ -93,11 +91,12 @@ class CDECDataUIManager(TimeSeriesDataUIManager):
         column_width_map = {
             "ID": "5%",
             "Station": "20%",
-            "County": "10%",
-            "River Basin": "10%",
-            "Start Date": "10%",
-            "End Date": "10%",
-            "Sensor": "10%",
+            "County": "8%",
+            "River Basin": "7%",
+            "Operator": "10%",
+            "Start Date": "8%",
+            "End Date": "8%",
+            "Sensor": "9%",
             "Sensor Number": "5%",
             "Duration": "5%",
             "Units": "5%",
