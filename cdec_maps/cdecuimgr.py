@@ -125,6 +125,11 @@ class CDECDataUIManager(TimeSeriesDataUIManager):
                     "func": "like",
                     "placeholder": "Enter match",
                 },
+                "Operator": {
+                    "type": "input",
+                    "func": "like",
+                    "placeholder": "Enter match",
+                },
                 "Sensor": {
                     "type": "input",
                     "func": "like",
