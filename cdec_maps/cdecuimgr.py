@@ -64,8 +64,8 @@ class CDECDataUIManager(TimeSeriesDataUIManager):
         cb = TqdmCallback(desc="cdec", tqdm_class=tqdm.tqdm)
         cb.register()
         control_widgets = super().get_widgets()
-        control_widgets.append(pn.WidgetBox())
-        control_widgets.append(pn.Row(self.param.bypass_cache))
+        #control_widgets.append(pn.WidgetBox())
+        #control_widgets.append(pn.Row(self.param.bypass_cache))
         return control_widgets
 
     # data related methods

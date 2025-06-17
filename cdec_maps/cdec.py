@@ -14,7 +14,7 @@ DURATION_MAP_INVERTED = {DURATION_MAP[k]: k for k in DURATION_MAP.keys()}
 import logging
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 
 def ensure_dir_exists(dir):
@@ -120,7 +120,7 @@ class Reader(param.Parameterized):
                 return dfs[table_id]
             else:
                 logger.warning(
-                    f"Table index {table_id} out of range (0-{len(dfs)-1}), returning first table"
+                    f"Table index {table_id} out of range (0-{len(dfs)-1}) in {url}, returning first table"
                 )
                 return dfs[0]
 
@@ -136,7 +136,7 @@ class Reader(param.Parameterized):
 
             # If no match found, return the first table with a warning
             logger.warning(
-                f"No table matching '{table_id}' found, returning first table"
+                f"No table matching '{table_id}' found in {url}, returning first table"
             )
             return dfs[0]
 
