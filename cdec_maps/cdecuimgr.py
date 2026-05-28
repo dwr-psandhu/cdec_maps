@@ -96,6 +96,11 @@ class CDECDataReferenceReader(DataReferenceReader):
         return f"CDECDataReferenceReader(reader={self._reader!r})"
 
     @classmethod
+    def catalog_crs(cls) -> str:
+        """CDEC geometry is in geographic WGS84 (EPSG:4326)."""
+        return "EPSG:4326"
+
+    @classmethod
     def scan(cls, path: str) -> list:
         """Scan the CDEC station catalog and return :class:`CDECDataReference` objects.
 
