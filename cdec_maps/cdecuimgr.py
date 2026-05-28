@@ -44,13 +44,23 @@ class CDECDataReferenceReader(DataReferenceReader):
 
     Parameters
     ----------
-    reader : cdec.Reader, optional
-        The CDEC reader instance used to fetch data.  When *None* a default
-        ``cdec.Reader()`` is created on first use.
+    source_or_reader : str or cdec.Reader or None
+        When a :class:`cdec.Reader` instance is passed, it is used directly.
+        When a string is passed (registry construction via
+        :class:`~dvue.registry.ReaderRegistry`), it is treated as a source
+        path and ignored — a default :class:`cdec.Reader` is created lazily
+        on the first :meth:`load` call.  When *None*, the default reader is
+        also created lazily.
     """
 
-    def __init__(self, reader=None) -> None:
-        self._reader = reader
+    def __init__(self, source_or_reader=None) -> None:
+        # Support both:
+        # - CDECDataReferenceReader(cdec_reader_obj)  — direct construction
+        # - CDECDataReferenceReader("source/path")    — registry construction (source ignored)
+        if isinstance(source_or_reader, str):
+            self._reader = None  # Registry construction; create default reader lazily
+        else:
+            self._reader = source_or_reader  # cdec.Reader instance or None
 
     def _get_reader(self) -> "cdec.Reader":
         """Return the reader, creating a default instance if none was supplied."""
@@ -84,6 +94,137 @@ class CDECDataReferenceReader(DataReferenceReader):
 
     def __repr__(self) -> str:
         return f"CDECDataReferenceReader(reader={self._reader!r})"
+
+    @classmethod
+    def scan(cls, path: str) -> list:
+        """Scan the CDEC station catalog and return :class:`CDECDataReference` objects.
+
+        Called by :class:`~dvue.registry.ReaderRegistry` when a ``cdec:``
+        source spec is passed to ``dvue ui``.  Examples::
+
+            dvue ui cdec:                              # default URL
+            dvue ui cdec:https://cdec.water.ca.gov    # explicit URL
+
+        Parameters
+        ----------
+        path : str
+            CDEC base URL, e.g. ``"https://cdec.water.ca.gov"``.  An empty
+            string selects the default URL.
+
+        Cache-first behaviour
+        ---------------------
+        Uses local CSV files written by :meth:`cdec.Reader.save_all_stations_info`
+        (``cdec_db/`` in the current directory).  Falls back to a live network
+        fetch if the local files are not found — that fetch can take several
+        minutes.
+        """
+        import geopandas as gpd
+        from . import cdec as cdec_module
+
+        base_url = (path or "").strip() or "https://cdec.water.ca.gov"
+        cdec_reader = cdec_module.Reader(cdec_base_url=base_url)
+        shared_dvue_reader = cls(cdec_reader)
+
+        # ------------------------------------------------------------------
+        # Load catalog — prefer local cache, fall back to live CDEC fetch
+        # ------------------------------------------------------------------
+        stations_meta_info = None
+        try:
+            _, _, stations_meta_info = cdec_reader.read_saved_stations_info()
+            logger.info(
+                "CDECDataReferenceReader.scan: loaded %d rows from local cache",
+                len(stations_meta_info),
+            )
+        except Exception as exc:
+            logger.warning(
+                "CDECDataReferenceReader.scan: local cache not found (%s). "
+                "Fetching full station catalog from CDEC — this may take several minutes.",
+                exc,
+            )
+            stations_meta_info = cdec_reader.read_all_stations_meta_info()
+            logger.info(
+                "CDECDataReferenceReader.scan: fetched %d rows from CDEC",
+                len(stations_meta_info),
+            )
+
+        stations_meta_info = stations_meta_info.copy()
+
+        # ------------------------------------------------------------------
+        # Bounding box filter (California / western US)
+        # ------------------------------------------------------------------
+        if "Latitude" in stations_meta_info.columns and "Longitude" in stations_meta_info.columns:
+            stations_meta_info = stations_meta_info[
+                (stations_meta_info["Latitude"] >= 30)
+                & (stations_meta_info["Latitude"] <= 45)
+                & (stations_meta_info["Longitude"] >= -125)
+                & (stations_meta_info["Longitude"] <= -110)
+            ].copy()
+
+        # ------------------------------------------------------------------
+        # Normalize types
+        # ------------------------------------------------------------------
+        if "Sensor Number" in stations_meta_info.columns:
+            stations_meta_info["Sensor Number"] = stations_meta_info["Sensor Number"].astype(str)
+
+        # ------------------------------------------------------------------
+        # Parse time extents from "Data Available" (e.g. "01/01/2000 to present")
+        # ------------------------------------------------------------------
+        if "Data Available" in stations_meta_info.columns:
+            avail = stations_meta_info["Data Available"].str.split(" to ", expand=True)
+            if avail.shape[1] >= 2:
+                stations_meta_info["_extent_start"] = pd.to_datetime(
+                    avail[0].str.strip(), errors="coerce"
+                )
+                end_raw = avail[1].str.strip().replace(
+                    "present", pd.Timestamp.now().strftime("%m/%d/%Y")
+                )
+                stations_meta_info["_extent_end"] = pd.to_datetime(end_raw, errors="coerce")
+
+        # ------------------------------------------------------------------
+        # Attach geometry from Latitude / Longitude
+        # ------------------------------------------------------------------
+        if "Latitude" in stations_meta_info.columns and "Longitude" in stations_meta_info.columns:
+            stations_meta_info = gpd.GeoDataFrame(
+                stations_meta_info,
+                geometry=gpd.points_from_xy(
+                    stations_meta_info["Longitude"],
+                    stations_meta_info["Latitude"],
+                    crs="EPSG:4326",
+                ),
+            )
+
+        # ------------------------------------------------------------------
+        # Deduplicate and build DataReference objects
+        # ------------------------------------------------------------------
+        dedup = stations_meta_info.drop_duplicates(subset=["ID", "Sensor Number", "Duration"])
+        refs = []
+        skipped = 0
+        for _, row in dedup.iterrows():
+            try:
+                ref = CDECDataReference.from_catalog_row(row, reader=shared_dvue_reader)
+                # Set source so RegistryUIManager can track which endpoint this came from
+                ref.source = base_url
+                ref._attributes["source"] = base_url
+                # Pre-normalise to station/variable for RegistryUIManager display
+                ref.set_attribute("station", str(row.get("ID", "")))
+                ref.set_attribute("variable", str(row.get("Sensor", "")))
+                # Time extents for RegistryUIManager.on_file_added time_range expansion
+                if "_extent_start" in row.index and pd.notna(row["_extent_start"]):
+                    ref.set_attribute("time_extent_start", str(row["_extent_start"]))
+                if "_extent_end" in row.index and pd.notna(row["_extent_end"]):
+                    ref.set_attribute("time_extent_end", str(row["_extent_end"]))
+                refs.append(ref)
+            except Exception as exc:
+                skipped += 1
+                if skipped <= 5:
+                    logger.debug("CDECDataReferenceReader.scan: skipped row — %s", exc)
+        if skipped:
+            logger.warning(
+                "CDECDataReferenceReader.scan: skipped %d rows (first 5 logged at DEBUG)",
+                skipped,
+            )
+        logger.info("CDECDataReferenceReader.scan: returning %d refs", len(refs))
+        return refs
 
 
 class CDECDataReference(DataReference):

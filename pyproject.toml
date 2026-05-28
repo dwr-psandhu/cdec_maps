@@ -43,6 +43,9 @@ dependencies = [
 [project.scripts]
 cdec_maps = "cdec_maps.cli:cli"
 
+[project.entry-points."dvue.plugins"]
+cdec_maps = "cdec_maps.readers:register_readers"
+
 [tool.setuptools_scm]
 write_to = "cdec_maps/_version.py"
 fallback_version = "0.0.0"
