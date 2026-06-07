@@ -90,6 +90,32 @@ class CDECDataReferenceReader(DataReferenceReader):
         ptype = "instantaneous" if duration_code == "E" else "period-averaged"
         df.attrs["unit"] = unit
         df.attrs["ptype"] = ptype
+        # Resample to a regular frequency so the DatetimeIndex carries a freq
+        # attribute — required by the vtools cosine_lanczos tidal filter.
+        # Try to infer frequency from the timestamps first; fall back to the
+        # known duration-code mapping when infer_freq returns None (e.g. gappy data).
+        _DURATION_FREQ = {"H": "h", "D": "D", "M": "MS"}
+        if len(df) > 1:
+            inferred = pd.infer_freq(df.index)
+            if inferred is None and len(df) >= 3:
+                # infer_freq requires a gap-free index; fall back to median diff
+                median_dt = pd.Series(df.index.to_numpy()).diff().dropna().median()
+                inferred = pd.tseries.frequencies.to_offset(median_dt)
+            fallback = _DURATION_FREQ.get(duration_code)
+            dur_freq = inferred or fallback
+            if dur_freq is not None:
+                logger.debug(
+                    "load %s/%s/%s: freq=%r (inferred=%r, fallback=%r) — resampling",
+                    station_id, sensor_number, duration_code, dur_freq, inferred, fallback,
+                )
+                attrs = df.attrs
+                df = df.resample(dur_freq).mean()
+                df.attrs = attrs
+            else:
+                logger.warning(
+                    "load %s/%s/%s: could not determine frequency — skipping resample",
+                    station_id, sensor_number, duration_code,
+                )
         return df
 
     def __repr__(self) -> str:
@@ -449,18 +475,6 @@ class CDECDataUIManager(TimeSeriesDataUIManager):
             ref.invalidate_cache()
         return ref
 
-    def get_data(self, df, time_range=None):
-        """Yield data for each row, applying tidal filter when requested."""
-        row_series = [row for _, row in df.iterrows()]
-        for data, row in zip(super().get_data(df, time_range=time_range), row_series):
-            if self.do_tidal_filter and data is not None and not data.empty:
-                duration_code = cdec.get_duration_code(row["Duration"])
-                if duration_code == "E":
-                    freq_str = pd.infer_freq(data.index)
-                    data = data.resample(freq_str or "15min").mean()
-                else:
-                    data = data.resample(duration_code).mean()
-            yield data
 
     def build_station_name(self, r):
         return r["ID"]
@@ -549,6 +563,11 @@ class CDECDataUIManager(TimeSeriesDataUIManager):
         return table_filters
 
     def is_irregular(self, r):
+        # CDEC event sensors ("(event)") are CDEC's label for sub-hourly data;
+        # many (e.g. MRZ) sample at a fixed 15-min interval, so we treat them
+        # as regular and let the tidal filter attempt proceed.
+        # Truly irregular data will fail the median-dt < 1D check in tsdataui
+        # and be skipped there.
         return False
 
     def _make_plot_action(self):
