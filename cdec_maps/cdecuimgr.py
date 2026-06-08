@@ -582,10 +582,15 @@ class CDECDataUIManager(TimeSeriesDataUIManager):
         ylabel = f'{r["Sensor"]} ({unit})'
         title = f'{r["Sensor"]} @ {r["ID"]} ({r["Duration"]}/{r["Description"]})'
         irreg = False  # TODO: set this based on some metadata, but for now all is regular time series
+        # Rename the index to "Time" (no spaces) so Bokeh's hover @field lookup
+        # resolves correctly. The raw index name "DATE TIME" (with a space) causes
+        # a CDS column/template mismatch that renders as "???" in the hover tooltip.
+        df_plot = df.iloc[:, [0]].copy()
+        df_plot.index.name = "Time"
         if irreg:
-            crv = hv.Scatter(df.iloc[:, [0]], label=crvlabel).redim(value=crvlabel)
+            crv = hv.Scatter(df_plot, label=crvlabel).redim(value=crvlabel)
         else:
-            crv = hv.Curve(df.iloc[:, [0]], label=crvlabel).redim(value=crvlabel)
+            crv = hv.Curve(df_plot, label=crvlabel).redim(value=crvlabel)
         return crv.opts(
             xlabel="Time",
             ylabel=ylabel,
