@@ -479,6 +479,18 @@ class CDECDataUIManager(TimeSeriesDataUIManager):
     def build_station_name(self, r):
         return r["ID"]
 
+    def get_convertible_unit_groups(self):
+        """Unit groups for dual y-axis from CDEC sensor data.
+
+        CDEC reports units in uppercase (e.g. ``DEG F``, ``EC``); the renderer
+        lowercases all unit strings before matching, so values here use
+        lowercase.
+        """
+        return [
+            {"deg f", "deg c"},
+            {"ec", "umhos/cm", "ppt"},
+        ]
+
     def get_time_range(self, dfcat):
         """
         Calculate time range from the data catalog
