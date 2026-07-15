@@ -491,6 +491,21 @@ class CDECDataUIManager(TimeSeriesDataUIManager):
             {"ec", "umhos/cm", "ppt"},
         ]
 
+    # Reference secondary axis for common CDEC unit pairs.
+    # CDEC is US-customary; the secondary axis shows the metric equivalent.
+    _SECONDARY_AXIS_SPECS = {
+        "deg f":    {"label": "\u00b0C",     "js_code": "(tick - 32) / 1.8"},
+        "cfs":      {"label": "m\u00b3/s",   "js_code": "tick / 35.3147"},
+        "feet":     {"label": "meters",      "js_code": "tick * 0.3048"},
+        "ec":       {"label": "PSU\u2248",   "js_code": "tick / 1600"},
+        "umhos/cm": {"label": "PSU\u2248",   "js_code": "tick / 1600"},
+        "ppt":      {"label": "\u00b5S/cm\u2248", "js_code": "tick * 1600"},
+    }
+
+    def get_secondary_axis_spec(self, unit: str):
+        """Reference metric axis for CDEC US-customary units."""
+        return self._SECONDARY_AXIS_SPECS.get(unit.lower())
+
     def get_time_range(self, dfcat):
         """
         Calculate time range from the data catalog
