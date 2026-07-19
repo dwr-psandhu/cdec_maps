@@ -491,20 +491,26 @@ class CDECDataUIManager(TimeSeriesDataUIManager):
             {"ec", "umhos/cm", "ppt"},
         ]
 
-    # Reference secondary axis for common CDEC unit pairs.
-    # CDEC is US-customary; the secondary axis shows the metric equivalent.
+    # Reference secondary axis for common CDEC unit pairs (linear only).
+    # EC ↔ PSU is non-linear; handled via get_annotation_hook.
     _SECONDARY_AXIS_SPECS = {
-        "deg f":    {"label": "\u00b0C",     "js_code": "(tick - 32) / 1.8"},
-        "cfs":      {"label": "m\u00b3/s",   "js_code": "tick / 35.3147"},
-        "feet":     {"label": "meters",      "js_code": "tick * 0.3048"},
-        "ec":       {"label": "PSU\u2248",   "js_code": "tick / 1600"},
-        "umhos/cm": {"label": "PSU\u2248",   "js_code": "tick / 1600"},
-        "ppt":      {"label": "\u00b5S/cm\u2248", "js_code": "tick * 1600"},
+        "deg f":    {"label": "\u00b0C",   "js_code": "(tick - 32) / 1.8"},
+        "cfs":      {"label": "m\u00b3/s", "js_code": "tick / 35.3147"},
+        "feet":     {"label": "meters",    "js_code": "tick * 0.3048"},
     }
 
     def get_secondary_axis_spec(self, unit: str):
-        """Reference metric axis for CDEC US-customary units."""
+        """Reference metric axis for CDEC US-customary units (linear only)."""
         return self._SECONDARY_AXIS_SPECS.get(unit.lower())
+
+    _EC_UNITS = {"ec", "umhos/cm"}
+
+    def get_annotation_hook(self, unit: str, lo, hi):
+        """PSU reference lines for CDEC EC axes; None otherwise."""
+        if unit.lower() in self._EC_UNITS and lo is not None and hi is not None:
+            from dvue.plotutils import make_psu_reference_lines_hook
+            return make_psu_reference_lines_hook(lo, hi)
+        return None
 
     def get_time_range(self, dfcat):
         """
