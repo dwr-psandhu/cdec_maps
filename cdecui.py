@@ -281,7 +281,18 @@ def main():
         address=args.address,
         allow_websocket_origin=["*"],
         show=not args.no_show,
-        unused_session_lifetime_milliseconds=2_592_000_000,
+        keep_alive=30000,
+        # Bounded (not Bokeh's 15s default, but not unbounded either): every
+        # cookie-less GET / (Azure Always-On ping, health check) spins up a
+        # full heavy CDECDataUIManager session via SessionManager that never
+        # reconnects. A huge value here let those orphaned sessions
+        # accumulate forever, leaking memory until the container was
+        # OOM-restarted -- killing every real user's connection at once.
+        unused_session_lifetime_milliseconds=1_800_000,
+        # Bokeh's default (300s) expires the reconnect token after a few
+        # minutes idle; the browser's automatic reconnect then fails
+        # permanently with "Token is expired" until the page is reloaded.
+        session_token_expiration=2_592_000,
     )
 
 

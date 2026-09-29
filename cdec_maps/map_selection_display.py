@@ -6,6 +6,7 @@ import hvplot.pandas
 import pandas as pd
 import holoviews as hv
 from holoviews import opts, dim
+from dvue.tile_sources import get_carto_tile_source
 hv.extension('bokeh')
 pn.extension()
 
@@ -21,7 +22,8 @@ class MapSelectionViewer(param.Parameterized):
     def __init__(self, stations, **kwargs):
         super().__init__(**kwargs)
         self.stations = stations
-        self.points_map = self.stations.hvplot.points('Longitude', 'Latitude', geo=True, tiles='CartoLight',
+        self.points_map = self.stations.hvplot.points('Longitude', 'Latitude', geo=True,
+                                                      tiles=get_carto_tile_source(),
                                                       frame_height=400, frame_width=300,
                                                       fill_alpha=0.9, line_alpha=0.4,
                                                       hover_cols=['index', 'ID', 'Station'])

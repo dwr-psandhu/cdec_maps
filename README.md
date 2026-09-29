@@ -198,6 +198,8 @@ panel serve cdec.py --address 0.0.0.0 --port 80 --allow-websocket-origin="*"
 
 See [`run_server.sh`](run_server.sh) for the production startup script.
 
+Set the `CARTO_API_KEY` environment variable (an App Service application setting in production) to a [CARTO basemaps API key](https://carto.com/basemaps/apikey); without it the map tiles show CARTO's "API key required" watermark.
+
 ---
 
 ## Development
